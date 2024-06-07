@@ -1,4 +1,9 @@
 <% layout("/layouts/boilerplate") %>
+<script>
+  const mapToken = "<%= process.env.MAP_TOKEN %>";
+  const listing = <%-JSON.stringify(listing) %>;
+</script>
+
 <div class="row">
   <div class="col-6 offset-3">
     <h2><%= listing.title %></h2>
@@ -22,9 +27,9 @@
       <p><%= listing?.country %></p>
     </div>
   </div>
+  
 
-  <br />
-
+  <br />                    
   <div class="btn1">
     <a
       href="/listings/<%= listing._id %>/edit"
@@ -97,14 +102,14 @@
     <hr />
 
     <p><b>All Reviews</b></p>
-
     <div>
       <% for(review of listing.reviews){ %>
+
       <div>
         <p class="starability-result" data-rating="<%= review.rating %>"></p>
         <p><b> <%= review.comment %> </b></p>
         <form
-          action="/listings/<%= listing._id %>/review/<%= review._id %>?_method=DELETE"
+          action="/listings/<%= listing._id %>/reviews/<%= review._id %>?_method=DELETE"
           method="post"
         >
           <button class="btn btn-dark">Delete</button>
@@ -114,6 +119,10 @@
       <% } %>
     </div>
   </div>
+  <div class="col-6 offset-2">
+    <h1>Wherw you'll be</h1>
+    <div id="map"></div>
+  </div>
 </div>
-<br />
-<br />rs
+<script src="/js/map.js"></script>
+
