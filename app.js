@@ -88,16 +88,19 @@ app.use((req,res,next)=>{
   next()
 })
 
-app.get("/demouser",async(req,res)=>{
-  let fakeData=new User({
-    email:"ankit@123789",
-    phone:620582488998,
-    username:"ankit",
-  })
-  let resa=await User.register(fakeData,"ankit")
-  res.send(resa);
-})
+// app.get("/demouser",async(req,res)=>{
+//   let fakeData=new User({
+//     email:"ankit@123789",
+//     phone:620582488998,
+//     username:"ankit",
+//   })
+//   let resa=await User.register(fakeData,"ankit")
+//   res.send(resa);
+// })
 
+app.get("/", (req, res) => {
+  res.redirect("/listings");
+})
 
 
 
