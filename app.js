@@ -25,7 +25,11 @@ const  LocalStrategy=require('passport-local');
 const User=require("./models/users.js");
 const userRouter = require("./routes/users.js");
  
-const dbUrl=process.env.ATLASDB_URL;
+ const dbUrl=process.env.ATLASDB_URL;
+
+
+
+
 
 main()
 .then(()=>{
@@ -37,6 +41,7 @@ async function main() {
   await mongoose.connect(dbUrl); 
  //await mongoose.connect('mongodb://127.0.0.1:27017/wanderfirst'); 
 };
+
 
 
 
@@ -81,6 +86,8 @@ passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
 
 
+
+
 app.use((req,res,next)=>{
   res.locals.message=req.flash("success")
   res.locals.error=req.flash("error")
@@ -112,12 +119,12 @@ app.use("/",userRouter)
 
 
 
-
+ 
 app.use("*",(req,res,next)=>{
   next(new ExpressError(404,"page not found"));
   })
   
-
+    
 app.use((err,req,res,next)=>{
   let{statusCode=500,message="something went wrongs"}=err;
   console.log(err);

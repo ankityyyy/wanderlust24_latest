@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: airbnb-ingress
+spec:
+  rules:
+    - host: airbnb.local
+      http:
+        paths:
+          - path: /             # Path must be defined
+            pathType: Prefix    # Required in v1 API
+            backend:
+              service:
+                name: airbnb-service
+                port:
+                  number: 80   # Must use 'number', not just 80
