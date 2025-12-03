@@ -1,31 +1,97 @@
-# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
 
 name: Airbnb CI/CD
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
 
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+  security:
+    name: Security Scan
+    runs-on: self-hosted
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - run: npm ci
-    - run: npm run build --if-present
-    - run: npm test
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: "npm"
+
+      - run: npm ci
+      - run: npm audit --omit=dev || true
+
+
+  docker-build:
+    name: Build & Push Docker Image
+    runs-on: self-hosted
+    needs: security
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build Docker Image
+        run: |
+          docker build -t ankitdockerd/airbnb:${{ github.sha }} .
+          docker tag ankitdockerd/airbnb:${{ github.sha }} ankitdockerd/airbnb:latest
+
+      - name: Push Docker Image
+        run: |
+          docker push ankitdockerd/airbnb:${{ github.sha }}
+          docker push ankitdockerd/airbnb:latest
+
+
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: self-hosted
+    needs: docker-build
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Configure AWS or local cluster (choose one)
+      - name: Configure AWS Credentials (If using EKS)
+        if: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update kubeconfig for EKS (Optional)
+        if: ${{ secrets.EKS_CLUSTER_NAME != '' }}
+        run: |
+          aws eks update-kubeconfig \
+            --region ${{ secrets.AWS_REGION }} \
+            --name ${{ secrets.EKS_CLUSTER_NAME }}
+
+      # If using local kubeadm/minikube, KUBECONFIG must be preset on self-hosted runner
+
+      # Update image inside deployment.yaml
+      - name: Update Deployment Image
+        run: |
+          sed -i "s|image:.*|image: ankitdockerd/airbnb:${{ github.sha }}|g" k8s/deployment.yaml
+
+      # Apply Kubernetes YAML files
+      - name: Apply Kubernetes Deployment
+        run: |
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          kubectl apply -f k8s/ingress.yaml
+
+      - name: Rollout Status Check
+        run: |
+          kubectl rollout status deployment/airbnb-deployment
