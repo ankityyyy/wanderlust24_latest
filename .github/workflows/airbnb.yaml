@@ -86,6 +86,10 @@ jobs:
       - name: Update Deployment Image
         run: |
           sed -i "s|image:.*|image: ankitdockerd/airbnb:${{ github.sha }}|g" k8s/deployment.yaml
+          
+      - name: Apply Kubernetes Secrets
+        run: kubectl apply -f k8s/secret.yaml
+    
 
       - name: Apply Kubernetes Deployment
         run: |
