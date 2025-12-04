@@ -95,4 +95,4 @@ jobs:
 
       - name: Rollout Status Check
         run: |
-          kubectl rollout status deployment/airbnb-deployment
+          kubectl rollout status deployment/airbnb-app
