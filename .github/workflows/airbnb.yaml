@@ -24,7 +24,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.x 
+          node-version: 22.x
           cache: "npm"
 
       - run: npm ci
@@ -59,33 +59,34 @@ jobs:
     runs-on: self-hosted
     needs: docker-build
 
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+
     steps:
       - uses: actions/checkout@v4
 
-      # Configure AWS or local cluster (choose one)
       - name: Configure AWS Credentials (If using EKS)
-        if: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}
+        if: ${{ env.AWS_ACCESS_KEY_ID != '' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Update kubeconfig for EKS (Optional)
-        if: ${{ secrets.EKS_CLUSTER_NAME != '' }}
+        if: ${{ env.EKS_CLUSTER_NAME != '' }}
         run: |
           aws eks update-kubeconfig \
-            --region ${{ secrets.AWS_REGION }} \
-            --name ${{ secrets.EKS_CLUSTER_NAME }}
+            --region ${{ env.AWS_REGION }} \
+            --name ${{ env.EKS_CLUSTER_NAME }}
 
-      # If using local kubeadm/minikube, KUBECONFIG must be preset on self-hosted runner
-
-      # Update image inside deployment.yaml
       - name: Update Deployment Image
         run: |
           sed -i "s|image:.*|image: ankitdockerd/airbnb:${{ github.sha }}|g" k8s/deployment.yaml
 
-      # Apply Kubernetes YAML files
       - name: Apply Kubernetes Deployment
         run: |
           kubectl apply -f k8s/deployment.yaml
